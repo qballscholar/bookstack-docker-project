@@ -1,5 +1,3 @@
-Your README.md file looks good overall, but I'll make some minor adjustments to improve the formatting for GitHub. Here's the corrected version:
-
 ```markdown
 # BookStack with MySQL monitored by Prometheus and Grafana
 
@@ -11,26 +9,33 @@ In this project, the complete environment will be using Docker containers that i
 
 Ensure Docker is installed on your machine. This project will be installed on a Red Hat / CentOS Linux machine.
 
-  Note: If installing Docker on RHEL, it is recommended to disable Podman to avoid any conflicts.
+> Note: If installing Docker on RHEL, it is recommended to disable Podman to avoid any conflicts.
 
-    First, stop any running containers:
-    ```bash
-    podman stop -a
-    ```
+First, stop any running containers:
 
-    Second, stop and disable the Podman socket service:
-    ```bash
-    sudo systemctl stop podman.socket
-    sudo systemctl disable podman.socket
-    ```
-    IF absolutely necessary, remove Podman Package:
-    ```bash
-    sudo dnf remove podman
-    ```
-    and remove releated directories and files:
-    ```bash
-    sudo rm -rf /etc/containers /var/lib/containers
-    ```
+```bash
+podman stop -a
+```
+
+Second, stop and disable the Podman socket service:
+
+```bash
+sudo systemctl stop podman.socket
+sudo systemctl disable podman.socket
+```
+
+If absolutely necessary, remove Podman Package:
+
+```bash
+sudo dnf remove podman
+```
+
+And remove related directories and files:
+
+```bash
+sudo rm -rf /etc/containers /var/lib/containers
+```
+```
 
 ### Steps to install Docker if not installed on RHEL/CentOS machine:
 
