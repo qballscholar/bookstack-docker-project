@@ -1,0 +1,118 @@
+version: '3.8'
+
+services: # Defines the services that will be run in the Docker containers
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment: # Sets environment variables for the MySQL container
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bookstack
+      MYSQL_USER: bookstackuser
+      MYSQL_PASSWORD: bookstackpassword
+    ports: # Maps ports between the host and the container
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql # Persists MySQL data in a named volume
+    networks: # Connects the container to a network
+      - app_network # Uses the "app_network" network
+
+  bookstack:
+    image: linuxserver/bookstack:latest
+    container_name: bookstack
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=bookstackuser
+      - DB_PASS=bookstackpassword
+      - DB_DATABASE=bookstack
+      - APP_URL=http://localhost:8080  # URL where BookStack will be accessible
+    ports:
+      - "8080:80" # Maps port 8080 on the host to port 80 on the container
+    depends_on: # Specifies dependencies on other services
+      - mysql  # Ensures the MySQL service is started before this service
+    volumes: # Mounts volumes to persist data
+      - bookstack_data:/config # Persists BookStack configuration data in a named volume
+    networks:
+      - app_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Mounts the Prometheus configuration file
+    ports:
+      - "9090:9090"
+    networks:
+      - app_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment: # Sets environment variables for the Grafana container
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana # Persists Grafana data in a named volume
+    depends_on:
+      - prometheus # Persists Grafana data in a named volume
+    networks:
+      - app_network
+
+  mysqld_exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysqld_exporter
+    environment:
+      - DATA_SOURCE_NAME=bookstackuser:bookstackpassword@mysql:3306/bookstack
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mysql # Ensures the MySQL service is started before this service
+    networks:
+      - app_network
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped # Restarts the container unless it is explicitly stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc' # Sets the path to the proc filesystem
+      - '--path.rootfs=/host' # Sets the path to the root filesystem
+    pid: host # Shares the host's process namespace
+    volumes:
+      - '/:/host:ro,rslave' # Mounts the host's root filesystem as read-only
+    network_mode: host  # Uses the host's network stack
+
+volumes: # Defines named volumes to persist data
+  mysql_data: # Named volume for MySQL data
+  bookstack_data: # Named volume for BookStack data
+  grafana_data: # Named volume for Grafana data
+
+networks: # Defines networks for the services
+  app_network:  # Network name
+    driver: bridge # Uses the bridge network driver
+
+# Prometheus is an open-source monitoring and alerting system that collects metrics
+# from configured targets at given intervals, evaluates rule expressions, displays
+# results, and can trigger alerts when specified conditions are observed. It is
+# designed for reliability and is used to monitor highly dynamic service-oriented
+# architectures and hardware.
+
+# Grafana is an open-source analytics and interactive visualization web application
+# that allows users to create dashboards and graphs for monitoring various data sources.
+# It supports multiple data sources and can produce charts, graphs, and alerts for the web.
+
+# BookStack is a free and open-source wiki software designed to be simple, self-hosted,
+# and easy to use. It is built on the Laravel PHP framework and allows users to organize
+# and store information in a structured manner using books, chapters, and pages.
+
+# mysqld_exporter is a Prometheus exporter for MySQL server metrics. It collects and
+# exposes MySQL server metrics to Prometheus, allowing for monitoring and alerting
+# on the performance and health of MySQL databases.
+
+# node_exporter is a Prometheus exporter that collects and exposes hardware and 
+# OS-level metrics from *NIX systems. It provides system-level insights such as 
+# CPU usage, memory, disk I/O, and network statistics, which can be scraped by 
+# Prometheus for monitoring and alerting purposes.
