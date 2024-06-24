@@ -86,7 +86,3 @@ This setup will provide a fully functional environment with Grafana and Promethe
 4. Go to Dashboard and click the 'New' blue button on the right side of the screen and you will see a dropdown menu. 
 5. Select import and in the field entry labeled 'Find and import dashboard URL or ID" enter 7991 for the '2MySQL Simple Dashboard' to monitor SQL. 
 6. Now go back and repeat the process then import 1860 for 'Node Exporter Full' dashboard for Prometheus.# bookstack-docker-project
-# bookstack-docker-project
-# bookstack-docker-project
-# bookstack-docker-project
-# bookstack-docker-project
