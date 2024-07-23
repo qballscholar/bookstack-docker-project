@@ -1,98 +1,107 @@
-version: '3.8'
+version: '3'
 
-services: # Defines the services that will be run in the Docker containers
-  mysql:
-    image: mysql:8.0
-    container_name: mysql
-    environment: # Sets environment variables for the MySQL container
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: bookstack
-      MYSQL_USER: bookstackuser
-      MYSQL_PASSWORD: bookstackpassword
-    ports: # Maps ports between the host and the container
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql # Persists MySQL data in a named volume
-    networks: # Connects the container to a network
-      - app_network # Uses the "app_network" network
-
+services:
   bookstack:
-    image: linuxserver/bookstack:latest
+    image: lscr.io/linuxserver/bookstack:latest
     container_name: bookstack
     environment:
-      - DB_HOST=mysql
-      - DB_USER=bookstackuser
-      - DB_PASS=bookstackpassword
-      - DB_DATABASE=bookstack
-      - APP_URL=http://localhost:8080  # URL where BookStack will be accessible
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - APP_URL=http://localhost:8080
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=bookstack
+      - DB_PASS=bookstack_password
+      - DB_DATABASE=bookstackapp
+    volumes:
+      - ./bookstack_data:/config
     ports:
-      - "8080:80" # Maps port 8080 on the host to port 80 on the container
-    depends_on: # Specifies dependencies on other services
-      - mysql  # Ensures the MySQL service is started before this service
-    volumes: # Mounts volumes to persist data
-      - bookstack_data:/config # Persists BookStack configuration data in a named volume
-    networks:
-      - app_network
+      - "8080:80"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: bookstack_db
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=bookstackapp
+      - MYSQL_USER=bookstack
+      - MYSQL_PASSWORD=bookstack_password
+    volumes:
+      - ./mysql_data:/config
+    ports:
+      - "3306:3306"  # Exposes port 3306 on the host
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Mounts the Prometheus configuration file
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
     ports:
       - "9090:9090"
-    networks:
-      - app_network
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    environment: # Sets environment variables for the Grafana container
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password
     ports:
       - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana # Persists Grafana data in a named volume
     depends_on:
-      - prometheus # Persists Grafana data in a named volume
-    networks:
-      - app_network
+      - prometheus
+    restart: unless-stopped
 
-  mysqld_exporter:
+  mysql_exporter:
     image: prom/mysqld-exporter:latest
-    container_name: mysqld_exporter
+    container_name: mysql_exporter
     environment:
-      - DATA_SOURCE_NAME=bookstackuser:bookstackpassword@mysql:3306/bookstack
+      - DATA_SOURCE_NAME=bookstack:bookstack_password@(db:3306)/
     ports:
       - "9104:9104"
     depends_on:
-      - mysql # Ensures the MySQL service is started before this service
-    networks:
-      - app_network
+      - db
+    restart: unless-stopped
 
-  node-exporter:
+  node_exporter:
     image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: unless-stopped # Restarts the container unless it is explicitly stopped
+    container_name: node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
     ports:
       - "9100:9100"
-    command:
-      - '--path.procfs=/host/proc' # Sets the path to the proc filesystem
-      - '--path.rootfs=/host' # Sets the path to the root filesystem
-    pid: host # Shares the host's process namespace
-    volumes:
-      - '/:/host:ro,rslave' # Mounts the host's root filesystem as read-only
-    network_mode: host  # Uses the host's network stack
+    restart: unless-stopped
 
-volumes: # Defines named volumes to persist data
-  mysql_data: # Named volume for MySQL data
-  bookstack_data: # Named volume for BookStack data
-  grafana_data: # Named volume for Grafana data
+volumes:
+  prometheus_data:
+  grafana_data:
+  bookstack_data:
+  mysql_data:
 
-networks: # Defines networks for the services
-  app_network:  # Network name
-    driver: bridge # Uses the bridge network driver
+
+# The provided docker-compose.yml file defines a multi-container environment using Docker Compose. Each block of code specifies a 
+# service, its configuration, and how it interacts with other services. Here's a short explanation of each service and its role.
 
 # Prometheus is an open-source monitoring and alerting system that collects metrics
 # from configured targets at given intervals, evaluates rule expressions, displays
@@ -108,9 +117,12 @@ networks: # Defines networks for the services
 # and easy to use. It is built on the Laravel PHP framework and allows users to organize
 # and store information in a structured manner using books, chapters, and pages.
 
-# mysqld_exporter is a Prometheus exporter for MySQL server metrics. It collects and
-# exposes MySQL server metrics to Prometheus, allowing for monitoring and alerting
-# on the performance and health of MySQL databases.
+# MariaDB is an open-source relational database management system (RDBMS) that originated as a fork of MySQL. It was developed by the # original creators of MySQL due to concerns over MySQL's acquisition by Oracle Corporation. MariaDB is designed to remain free and 
+# open-source under the GNU General Public License (GPL).
+
+# mysqld_exporter is a Prometheus exporter for MariDB/MySQL server metrics. It collects and
+# exposes MariaDB server metrics to Prometheus, allowing for monitoring and alerting
+# on the performance and health of MariaDB databases.
 
 # node_exporter is a Prometheus exporter that collects and exposes hardware and 
 # OS-level metrics from *NIX systems. It provides system-level insights such as 
