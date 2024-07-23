@@ -1,21 +1,23 @@
 ```markdown
-# BookStack with MySQL monitored by Prometheus and Grafana
+# BookStack with MariaDB monitored by Prometheus and metrics displayed by Grafana.
 
-This project is an educational lab introducing beginners to a more intermediate approach of learning Docker, and containers in general, with an environment including monitoring of resources and database implementation.
+This project is an educational project introducing beginners to a more intermediate approach of learning Docker, and multi-containers, in an environment including the graphical monitoring of resources and database implementation.
 
-In this project, the complete environment will be using Docker containers that includes Grafana and Prometheus for metrics and dashboards, BookStack application as the front-end, and MySQL as the application back-end. Docker Compose is to be used to manage the services. The project includes a comprehensive docker-compose.yml file that sets up all these components and a prometheus.yml file.
+In this project, the complete environment will be using Docker containers that includes Grafana and Prometheus for metrics and dashboards, BookStack application as the front-end app, and MariaDB as the back-end database. Docker Compose is to be used to provision the services. The project includes a comprehensive docker-compose.yml file that sets up all of these components and a prometheus.yml file to set-up where Prometheus is to acquire metrics.
 
 ## Prerequisite
 
-Ensure Docker is installed on your machine. This project will be installed on a Red Hat / CentOS Linux machine.
+Ensure Docker is installed on your machine. This project will be installed on a Red Hat / CentOS Streaming 9 Linux machine.
 
-> Note: If installing Docker on RHEL, it is recommended to disable Podman to avoid any conflicts.
+> Note: If installing Docker on RHEL, it is recommended to disable Podman (if installed) to avoid any conflicts. It is recommended to install on the latest version of Centos Streaming 9 as Centos Streaming 8 & Centos 9 have deprecated repositories and may complicate the installing process.
 
-First, stop any running containers:
+### First, you must stop any running containers IF installed:
 
 ```bash
+
 podman stop -a
 ```
+
 
 Second, stop and disable the Podman socket service:
 
@@ -33,13 +35,15 @@ sudo dnf remove podman
 And remove related directories and files:
 
 ```bash
+
 sudo rm -rf /etc/containers /var/lib/containers
 ```
 ```
 
-### Steps to install Docker if not installed on RHEL/CentOS machine:
+### Steps to install Docker if not previously installed on RHEL/CentOS machine:
 
 1. Install required packages:
+
    ```bash
    sudo yum install -y yum-utils device-mapper-persistent-data lvm2
    ```
@@ -110,6 +114,49 @@ Ensure BookStack is properly installed and configured on your local machine.
 
 This setup will provide a fully functional environment with Grafana and Prometheus for monitoring, BookStack as the front-end application, and MySQL as the back-end database.
 
-4. Go to Dashboard and click the 'New' blue button on the right side of the screen and you will see a dropdown menu.
-5. Select import and in the field entry labeled 'Find and import dashboard URL or ID" enter 7991 for the '2MySQL Simple Dashboard' to monitor SQL.
-6. Now go back and repeat the process then import 1860 for 'Node Exporter Full' dashboard for Prometheus.# bookstack-docker-project
+4. Log into Grafana, then go to "Dashboards" in the main menu and click "New" to select "Import" from the dropdown menu.
+5. In the field labeled 'Import via grafana.com" enter 7991 for the '2MySQL Simple Dashboard' to monitor SQL and click "Load."
+6. Select the appropriate data source for the dashboard from the dropdown menu.
+7. Click "Import" and the dahsboard will be imported and opened then click "Save" to store it.
+8. Now go back and repeat the process in steps 5, 6, & 7. You will also import 1860 for the 'Node Exporter Full' dashboard for Prometheus.
+Note: If the dashboard doesn't display data correctly, you may need to adjust the data source. Edit the dashboard and check each panel's data source settings. Update the data source to match your Grafana setup.
+
+### BookStack application troubleshooting tips:
+If the application does not properly display from missing graphics, a timeout on url http://localhost:8080, or immediate redirection to http://localhost:8080/login do the following commands on the CLI to enter the active container and adjust the environment:
+
+1. Install the latest Docker Engine:
+
+   ```bash
+   docker exec -it bookstack /bin/bash
+   ```
+2. Inside the container, edit the '.env' file ensuring the 'APP_URL' in the '.env' file matches the one in the docker-compose.yml template which is APP_URL=http://localhost:8080  and save:
+  ```bash
+  vi /config/www/.env
+  ```
+3. Update the URLs in the Database:
+   ```bash
+  docker exec -it bookstack php /app/www/artisan bookstack:update-url http://localhost:8080/login http://localhost:8080
+  ```
+
+4. Clear the application cache:
+   ```bash
+  docker exec -it bookstack php /app/www/artisan cache:clear
+  docker exec -it bookstack php /app/www/artisan view:clear
+  docker exec -it bookstack php /app/www/artisan route:clear
+  ```
+
+5. Exit the container:
+   ```bash
+  exit
+   ```
+
+6. Restart the BookStack multi-container environment:
+   ```bash
+  docker-compose down
+  docker-compose up -d
+  ```
+
+7. Open your browser and go to <http://localhost:8080> .
+
+# bookstack-docker-project-mariadb
+
