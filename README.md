@@ -35,7 +35,7 @@ And remove related directories and files:
 sudo rm -rf /etc/containers /var/lib/containers
 ```
 
-### Steps to install Docker if not previously installed on RHEL/CentOS machine:
+### Steps to install Docker if not previously installed on RHEL/CentOS machine (note: use dnf if unable to use yum):
 
 1. Install required packages:
 
@@ -97,7 +97,7 @@ sudo yum update -y
 Open a terminal, navigate to the directory containing the `docker-compose.yml` file and `prometheus.yml` file, and run:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Access the Services
@@ -172,8 +172,8 @@ exit
 6. Restart the BookStack multi-container environment:
 
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 7. Open your browser and go to `http://localhost:8080`.
