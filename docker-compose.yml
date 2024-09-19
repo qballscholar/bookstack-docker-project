@@ -8,7 +8,8 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Etc/UTC
-      - APP_URL=http://localhost:8080
+#      - APP_URL=http://localhost:8080
+      - APP_URL=http://10.1.30.70:6875 # Change localhost to VM's host ip address. Change host port to less commonly used port
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=bookstack
@@ -17,14 +18,14 @@ services:
     volumes:
       - ./bookstack_data:/config
     ports:
-      - "8080:80"
+      - "6875:80" # Changed Host port to less common used port
     depends_on:
       - db
     restart: unless-stopped
 
   db:
     image: lscr.io/linuxserver/mariadb:latest
-    container_name: bookstack_db
+    container_name: db # Container name same as service to avoid confusion  
     environment:
       - PUID=1000
       - PGID=1000
@@ -70,8 +71,13 @@ services:
   mysql_exporter:
     image: prom/mysqld-exporter:latest
     container_name: mysql_exporter
-    environment:
-      - DATA_SOURCE_NAME=bookstack:bookstack_password@(db:3306)/
+    command:
+      - --config.my-cnf=/cfg/.my.cnf # Explicitly state where to find configuration file
+ # Environment configuration did not work for me
+ #   environment:
+ #     - DATA_SOURCE_NAME=bookstack:bookstack_password@(db:3306)/ 
+    volumes:
+      - ./my.cnf:/cfg/.my.cnf
     ports:
       - "9104:9104"
     depends_on:
@@ -92,6 +98,19 @@ services:
     ports:
       - "9100:9100"
     restart: unless-stopped
+
+# Scraping at bookstack port 80 did not work
+# Added php_fpm_exporter to collect metrics from bookstack application
+
+  php_fpm_exporter:
+    image: hipages/php-fpm_exporter
+    container_name: php_fpm_exporter
+    environment:
+      PHP_FPM_SCRAPE_URI: "http://10.1.30.70:6875/status" # VM Host IP adddress and bookstack port 
+    ports:
+      - "9253:9253"
+    depends_on:
+      - bookstack
 
 volumes:
   prometheus_data:
